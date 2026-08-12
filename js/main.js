@@ -35,10 +35,10 @@
 
   fetch(DIR + '/manifest.json')
     .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-    .then(function (m) { setup(m.count, m.pad, m.ext); })
+    .then(function (m) { setup(m.count, m.pad, m.ext, m.veilC, m.veilW); })
     .catch(function () { /* frames absentes : page statique */ });
 
-  function setup(COUNT, PAD, EXT) {
+  function setup(COUNT, PAD, EXT, VEIL_C, VEIL_W) {
     var ctx = canvas.getContext('2d');
     var frames = new Array(COUNT);
     var loaded = new Array(COUNT);
@@ -102,6 +102,7 @@
 
     var hero = document.getElementById('hero');
     var finale = document.getElementById('finale');
+    var veil = document.getElementById('veil');
     var fill = document.getElementById('pbFill');
     var caps = document.querySelectorAll('.cap');
     var RANGES = [[0.18, 0.42], [0.48, 0.72]];
@@ -118,6 +119,12 @@
         target = Math.max(0, Math.min(COUNT - 1, f));
 
         if (fill) fill.style.transform = 'scaleX(' + p + ')';
+
+        /* voile noir centré sur le franchissement de la porte */
+        if (veil && typeof VEIL_C === 'number') {
+          var w = VEIL_W || 0.06;
+          veil.style.opacity = Math.max(0, 1 - Math.abs(p - VEIL_C) / w);
+        }
 
         if (hero) {
           var o = Math.max(0, 1 - p * 8);
