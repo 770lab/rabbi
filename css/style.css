@@ -208,8 +208,6 @@ a { color: inherit; text-decoration: none; }
   border-top: 1px solid rgba(239, 228, 205, 0.12);
 }
 .foot-brand { font-size: 11px; font-weight: 700; letter-spacing: 0.5em; color: var(--gold); }
-.foot-tiny { font-size: 9px; letter-spacing: 0.14em; color: rgba(239, 228, 205, 0.3); }
-.foot-tiny:hover { color: rgba(239, 228, 205, 0.7); }
 .foot-link { font-size: 11px; font-weight: 600; letter-spacing: 0.2em; color: rgba(239, 228, 205, 0.85); }
 .foot-link:hover { color: var(--gold); }
 
