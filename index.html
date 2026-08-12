@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>770 — Entrez | Koulam</title>
+<meta name="description" content="770 Eastern Parkway, Brooklyn. La synagogue du Rabbi de Loubavitch. Scrollez : entrez. Puis emportez-la partout avec Koulam.">
+<meta property="og:title" content="770 — Entrez | Koulam">
+<meta property="og:description" content="Scrollez : entrez au 770. Puis emportez-le partout avec Koulam.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23120e0a'/><text x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='13' fill='%23d8b46a'>770</text></svg>">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="loader" id="loader" aria-hidden="true">
+  <span class="loader-word">KOULAM</span>
+  <span class="loader-770">770</span>
+  <span class="loader-line"><i></i></span>
+</div>
+
+<div class="grain" aria-hidden="true"></div>
+
+<main class="exp" id="exp">
+  <div class="pin">
+    <canvas class="seq-canvas" id="seqCanvas" aria-hidden="true"></canvas>
+    <div class="shade"></div>
+    <div class="shade2" aria-hidden="true"></div>
+
+    <!-- overlay d'ouverture -->
+    <div class="hero" id="hero">
+      <header class="bar">
+        <span class="wordmark">KOULAM</span>
+        <a class="btn-ghost" href="https://koulam.app/telecharger?utm_source=770lab-rabbi&utm_medium=web&utm_campaign=rabbi770">L&rsquo;APP</a>
+      </header>
+      <div class="hero-copy">
+        <p class="hero-kicker">EASTERN&nbsp;PARKWAY&nbsp;&nbsp;·&nbsp;&nbsp;BROOKLYN,&nbsp;N.Y.</p>
+        <h1 class="hero-title">770</h1>
+        <p class="hero-sub">La synagogue du Rabbi de Loubavitch.</p>
+      </div>
+      <div class="scroll-cue"><span>SCROLLEZ&nbsp;&mdash;&nbsp;ENTREZ</span><i></i></div>
+    </div>
+
+    <!-- légendes pendant la traversée -->
+    <div class="cap" data-step="0"><p>Des g&eacute;n&eacute;rations<br>y sont entr&eacute;es.</p></div>
+    <div class="cap" data-step="1"><p>On y &eacute;tudie, on y prie.<br>Le monde entier s&rsquo;y retrouve.</p></div>
+
+    <!-- finale -->
+    <div class="finale" id="finale">
+      <p class="finale-kicker">KOULAM</p>
+      <h2 class="finale-title">Le&nbsp;770,<br>dans ta poche.</h2>
+      <p class="finale-sub">T&eacute;filot, cours, T&eacute;hilim, horaires, communaut&eacute; —<br>o&ugrave; que tu sois, Koulam te relie.</p>
+      <a class="cta" href="https://koulam.app/telecharger?utm_source=770lab-rabbi&utm_medium=web&utm_campaign=rabbi770">T&eacute;l&eacute;charger&nbsp;Koulam</a>
+      <ul class="feats">
+        <li>SIDDOUR</li><li>·</li><li>COURS</li><li>·</li><li>T&Eacute;HILIM</li><li>·</li><li>AUTOUR&nbsp;DE&nbsp;MOI</li>
+      </ul>
+    </div>
+
+    <div class="progressbar" aria-hidden="true">
+      <span>DEHORS</span><span class="pb-track"><i id="pbFill"></i></span><span>DEDANS</span>
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand">KOULAM</span>
+  <p class="foot-credits">
+    Photos&nbsp;: fa&ccedil;ade — Sagtkd (domaine public)&nbsp;&middot;&nbsp;int&eacute;rieur — Rabbi&nbsp;michel,
+    <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license">CC&nbsp;BY-SA&nbsp;4.0</a>
+    (recadr&eacute;es, &eacute;talonn&eacute;es, animation d&rsquo;entr&eacute;e g&eacute;n&eacute;r&eacute;e entre les deux vues)
+    &nbsp;&middot;&nbsp;via <a href="https://commons.wikimedia.org/wiki/Category:770_Eastern_Parkway">Wikimedia&nbsp;Commons</a>
+  </p>
+  <a class="foot-link" href="https://koulam.app/telecharger?utm_source=770lab-rabbi&utm_medium=web&utm_campaign=rabbi770-footer">koulam.app</a>
+</footer>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="vendor/lenis.min.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
