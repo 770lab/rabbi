@@ -152,6 +152,69 @@ c'est toute la campagne qui meurt — et votre messagerie avec.
 
 ---
 
+## Mise en route (à faire une fois)
+
+### 1. La clé Google Places
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → créer un projet.
+2. Activer **Places API (New)** — pas l'ancienne, les deux coexistent.
+3. Identifiants → Créer → Clé API. **Restreindre la clé à Places API (New)**,
+   sinon une fuite coûte cher.
+4. La facturation doit être active. Google offre un crédit mensuel qui couvre
+   largement un balayage de quartier ; au-delà, `searchText` se facture au
+   millier d'appels. Le mode `--pavage` multiplie les appels : à réserver aux
+   zones vraiment denses.
+
+```bash
+export GOOGLE_MAPS_API_KEY='AIza...'
+```
+
+### 2. L'adresse d'expédition
+
+Ne prospectez jamais depuis votre boîte personnelle : quelques signalements
+spam suffisent à dégrader la délivrabilité de toutes vos conversations.
+
+Le plus simple avec un domaine déjà en main : **Google Workspace**, un
+utilisateur (~7 €/mois). Vous obtenez une vraie boîte, et surtout une signature
+DKIM à votre domaine — ce qui décide de l'arrivée en boîte de réception ou en
+indésirables.
+
+Les quatre enregistrements à poser chez votre hébergeur DNS :
+
+| Type | Nom | Valeur |
+|---|---|---|
+| MX | `@` | `smtp.google.com` (priorité 1) |
+| TXT | `@` | `v=spf1 include:_spf.google.com ~all` |
+| TXT | `google._domainkey` | la clé DKIM fournie par Workspace (Apps → Gmail → Authentifier les e-mails) |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:votre@adresse` |
+
+Si le domaine est derrière Cloudflare, ces enregistrements se posent dans
+l'onglet DNS, en mode **DNS only** (nuage gris) — jamais proxifiés.
+
+Comptez 24 h de propagation, puis **chauffez l'adresse** : 5 envois le premier
+jour, 10 le deuxième, puis doublez jusqu'au quota. Une adresse neuve qui envoie
+40 mails d'un coup part directement en indésirables.
+
+### 3. La page de rendez-vous
+
+Google Agenda → Créer → **Plage de rendez-vous**. Réglez la durée sur 20
+minutes, les disponibilités sur 10h–11h30 et 14h30–17h (un commerçant n'est
+pas joignable pendant le service), un délai minimum de 12 h et un maximum de
+3 semaines. Copiez le lien public dans `rdv.lien`.
+
+C'est préférable aux créneaux en dur : le lien ne périme jamais.
+
+### 4. Où tourne quoi
+
+`chercher` n'a besoin que de l'API Google. **`auditer` et `enrichir` visitent
+les sites des prospects** : il leur faut un accès web ordinaire. Sur une
+machine dont la sortie réseau est filtrée, ces deux étapes échouent en
+`injoignable` sur tout le monde — ce qui n'est pas un verdict, c'est une
+panne. Vérifiez toujours le récapitulatif : si tout ressort `injoignable`,
+c'est le réseau, pas les prospects.
+
+---
+
 ## Pistes
 
 Ce qui n'est pas encore fait, par ordre de rendement décroissant.

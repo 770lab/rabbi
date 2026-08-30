@@ -440,22 +440,32 @@ def cmd_liste(args, cfg):
     con = store_mod.ouvrir(args.db)
     lignes = con.execute(
         """SELECT e.nom, e.ville, e.categorie, e.note, e.nb_avis, e.telephone, e.site,
-                  a.verdict, a.score, a.score_fiche
+                  e.statut, a.verdict, a.score, a.score_fiche
            FROM etablissements e LEFT JOIN audits a ON a.place_id = e.place_id"""
     ).fetchall()
     donnees = sorted(({**dict(r), "priorite": score_opportunite(dict(r), dict(r))}
                       for r in lignes), key=lambda x: -x["priorite"])
     if args.verdict:
         donnees = [d for d in donnees if d.get("verdict") == args.verdict]
-    print(f"{'prio':>4}  {'établissement':<34} {'ville':<14} {'avis':>5} {'verdict':<11} "
-          f"{'site':>5} {'fiche':>5}")
-    print("-" * 92)
+    if getattr(args, "sans_site", False):
+        donnees = [d for d in donnees if not (d.get("site") or "").strip()]
+    if getattr(args, "avec_site", False):
+        donnees = [d for d in donnees if (d.get("site") or "").strip()]
+    print(f"{'prio':>4}  {'établissement':<32} {'ville':<13} {'avis':>5}  {'site ?':<8} "
+          f"{'verdict':<11} {'note':>5} {'fiche':>5}")
+    print("-" * 97)
     for d in donnees[: args.limite or 50]:
-        print(f"{d['priorite']:>4}  {(d['nom'] or '')[:34]:<34} {(d['ville'] or '')[:14]:<14} "
-              f"{d['nb_avis'] or 0:>5} {(d['verdict'] or '—'):<11} "
+        a_un_site = "oui" if (d.get("site") or "").strip() else "AUCUN"
+        print(f"{d['priorite']:>4}  {(d['nom'] or '')[:32]:<32} {(d['ville'] or '')[:13]:<13} "
+              f"{d['nb_avis'] or 0:>5}  {a_un_site:<8} {(d['verdict'] or '—'):<11} "
               f"{(d['score'] if d['score'] is not None else '—'):>5} "
               f"{(d['score_fiche'] if d['score_fiche'] is not None else '—'):>5}")
-    print(f"\n{len(donnees)} établissement(s).")
+
+    sans = sum(1 for d in donnees if not (d.get("site") or "").strip())
+    print(f"\n{len(donnees)} établissement(s) · {sans} sans site · {len(donnees)-sans} avec site")
+    if not any(d.get("verdict") for d in donnees):
+        print("Aucun audit pour l'instant : lancez `auditer` pour départager les sites "
+              "obsolètes des sites corrects.")
 
 
 def cmd_stop(args, cfg):
@@ -536,6 +546,10 @@ def principal(argv=None):
 
     l = sp.add_parser("liste", help="afficher la base, triée par priorité")
     l.add_argument("--verdict", choices=["absent", "obsolete", "correct", "injoignable"])
+    l.add_argument("--sans-site", dest="sans_site", action="store_true",
+                   help="uniquement les fiches sans site web (dispo dès `chercher`)")
+    l.add_argument("--avec-site", dest="avec_site", action="store_true",
+                   help="uniquement les fiches qui affichent un site")
     l.add_argument("--limite", type=int)
     l.set_defaults(fn=cmd_liste)
 
