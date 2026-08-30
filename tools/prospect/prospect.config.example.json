@@ -1,0 +1,51 @@
+{
+  "identite": {
+    "nom": "Prénom Nom",
+    "societe": "770 Lab",
+    "email": "vous@votredomaine.fr",
+    "telephone": "06 00 00 00 00",
+    "site": "https://votredomaine.fr",
+    "adresse_postale": "12 rue Exemple, 69003 Lyon"
+  },
+
+  "rdv": {
+    "lien": "https://calendar.app.google/VOTRE-PAGE-DE-RESERVATION",
+    "duree_min": 20,
+    "fuseau": "Europe/Paris"
+  },
+
+  "offre": {
+    "prix": "890 €",
+    "delai": "7 jours",
+    "garantie": "Si la page ne vous plaît pas, vous ne payez rien."
+  },
+
+  "maquettes": {
+    "base_url": "https://maquettes.votredomaine.fr"
+  },
+
+  "zones": [
+    { "ville": "Lyon 3e", "lat": 45.7597, "lng": 4.8422, "rayon_m": 1500 },
+    { "ville": "Villeurbanne", "lat": 45.7719, "lng": 4.8902, "rayon_m": 2000 }
+  ],
+
+  "categories_prioritaires": ["restaurant"],
+  "categories_secondaires": [
+    "bakery", "cafe", "bar", "hair_care", "beauty_salon",
+    "plumber", "electrician", "car_repair", "dentist", "real_estate_agency"
+  ],
+
+  "seuils": {
+    "site_obsolete": 60,
+    "site_correct": 75,
+    "avis_min": 5
+  },
+
+  "quotas": {
+    "max_emails_par_jour": 40,
+    "delai_relance_1_jours": 4,
+    "delai_relance_2_jours": 9
+  },
+
+  "langue": "fr"
+}
