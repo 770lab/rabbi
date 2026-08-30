@@ -67,8 +67,13 @@ a { color: inherit; text-decoration: none; }
 .shade {
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
+    /* Le titre et les légendes sont tous à gauche (left: 8vw), le titre à
+       mi-hauteur : les deux bandes horizontales ne le couvraient pas. Ce
+       dégradé assombrit la colonne de texte et laisse le bâtiment libre. */
+    linear-gradient(90deg, rgba(16, 12, 9, 0.68) 0%, rgba(16, 12, 9, 0.34) 34%,
+                           rgba(16, 12, 9, 0) 58%),
     linear-gradient(180deg, rgba(16, 12, 9, 0.5) 0%, rgba(16, 12, 9, 0) 20%),
-    linear-gradient(0deg, rgba(16, 12, 9, 0.55) 0%, rgba(16, 12, 9, 0) 26%);
+    linear-gradient(0deg, rgba(16, 12, 9, 0.62) 0%, rgba(16, 12, 9, 0) 30%);
 }
 /* voile noir du franchissement de la porte */
 .veil { position: absolute; inset: 0; z-index: 8; background: #060403; opacity: 0; pointer-events: none; }
