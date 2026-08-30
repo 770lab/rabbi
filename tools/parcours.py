@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
-"""Reconstruit l'approche du 770 à partir des VRAIES photos.
+"""Reconstruit l'approche du 770 à partir d'UNE vraie photo par format.
 
 Les frames 1 à 53 du hero sont regénérées depuis `photos-src/`. Les frames
 54 à 145 — la traversée de la porte et l'intérieur — sont conservées.
 
     python3 tools/parcours.py
 
-MÉTHODE — pourquoi ce n'est pas un simple enchaînement de trois photos.
+MÉTHODE. Une seule photo, un seul mouvement : un travelling avant continu
+sur la vue de loin. Aucun fondu, aucune coupe — donc rien qui puisse se
+voir. Un premier essai enchaînait trois photos ; même avec un raccord
+calculé sur la porte, le changement d'image restait perceptible.
 
-Un fondu entre deux photos cadrées indépendamment se voit toujours : au
-moment du croisement, le bâtiment n'est ni à la même échelle ni au même
-endroit dans les deux images, et l'œil décroche.
+Le cadrage est piloté dans « l'espace de la porte » : à chaque frame elle
+doit occuper telle largeur d'écran, à telle position. La courbe est
+géométrique, ce que donne une caméra qui avance à vitesse constante, et
+la porte reste ainsi rigoureusement centrée pendant tout le zoom.
 
-Ici c'est l'inverse. On décrit d'abord le mouvement de caméra dans
-« l'espace de la porte » : à chaque frame, la porte doit occuper telle
-largeur de l'écran, à telle position. Cette courbe est continue et
-monotone du début à la fin. Ensuite seulement, pour chaque photo, on
-résout le recadrage qui pose la porte exactement là.
-
-Résultat : au moment du fondu, les deux photos montrent la porte à la même
-taille et au même endroit. Le fondu devient un raccord.
+Le raccord vers les frames générées (f_0054) est masqué par le voile noir
+du site, déplacé pour tomber pile dessus — voir `veil` dans manifest.json.
 
 Aucune image n'est générée ni interpolée : on ne recadre et on n'étalonne
 que des photographies. C'est un lieu réel et identifiable.
 """
+import json
 import pathlib
 import numpy as np
 from PIL import Image, ImageEnhance
@@ -31,78 +30,43 @@ from PIL import Image, ImageEnhance
 ICI      = pathlib.Path(__file__).resolve().parent.parent
 PHOTOS   = ICI / "photos-src"
 JONCTION = 53
+COUNT    = 145
 FORMATS  = {"seq169": (1440, 810), "seq916": (810, 1440)}
-SUR_ECH  = 1.75          # agrandissement maximal toléré avant que ça pâteuse
 
-# Boîte de la porte dans chaque photo, en fractions de l'image (relevé à la grille).
-PORTE = {
-    "p09": (.487, .445, .514, .545),
-    "p06": (.484, .466, .532, .518),
-    "p08": (.484, .596, .533, .724),
-    "p04": (.467, .503, .559, .585),
-    "p01": (.349, .359, .618, .692),
-}
+# La vue de loin, celle qu'Anthony voulait garder : le trottoir et la
+# mosaïque 770 au premier plan, le bâtiment entier.
+VUE  = {"seq169": "p09", "seq916": "p06"}
+ZOOM = 5.5                      # facteur de travelling du début à f_0053
 
-# deb/fin se recouvrent largement : le fondu dure une douzaine de frames.
-TEMPS = [
-    dict(nom="trottoir", seq169="p09", seq916="p06", deb=1,  fin=24),
-    dict(nom="allée",    seq169="p08", seq916="p04", deb=14, fin=45),
-    dict(nom="porte",    seq169="p01", seq916="p01", deb=36, fin=53),
-]
+# Boîte de la porte dans la photo, en fractions (relevé à la grille).
+PORTE = {"p09": (.487, .445, .514, .545),
+         "p06": (.484, .466, .532, .518)}
 
-# La porte passe de 3 % à 60 % de la largeur de l'écran. Progression
-# géométrique : c'est ce que donne une caméra qui avance à vitesse constante.
-LARG_DEB, LARG_FIN = .030, .600
-CENTRE_DEB, CENTRE_FIN = (.50, .430), (.50, .500)
+# Le site mappe l'index de frame sur la progression du scroll par
+# `f = min(1, p / 0.88) * (COUNT - 1)`. f_0054 est l'index 53.
+VEIL_C = round(53 / (COUNT - 1) * 0.88, 4)
+VEIL_W = 0.055
 
 
-def visee(i):
-    """Largeur et centre visés pour la porte, à l'écran, à la frame i."""
-    t = (i - 1) / (JONCTION - 1)
-    larg = LARG_DEB * (LARG_FIN / LARG_DEB) ** t
-    cu = CENTRE_DEB[0] + (CENTRE_FIN[0] - CENTRE_DEB[0]) * t
-    cv = CENTRE_DEB[1] + (CENTRE_FIN[1] - CENTRE_DEB[1]) * t
-    return larg, cu, cv
-
-
-def cadre_pour(photo, src, taille, larg, cu, cv):
-    """Recadrage de `src` qui pose la porte à `larg` de large, centrée en (cu, cv).
-
-    Renvoie la boîte de découpe. Si la photo ne peut pas donner cette taille
-    sans être trop agrandie, on prend le maximum tolérable : la porte sera un
-    peu plus petite que visé, ce que le fondu absorbe.
-    """
+def cadre(photo, src, taille, larg):
+    """Découpe qui pose la porte à `larg` de large, centrée à l'écran."""
     W, H = taille
     sw, sh = src.size
     x0, y0, x1, y1 = PORTE[photo]
-    porte_w = (x1 - x0) * sw                      # largeur de la porte, en pixels source
-    porte_cx = (x0 + x1) / 2 * sw
-    porte_cy = (y0 + y1) / 2 * sh
-
-    cw = porte_w / larg                           # largeur de découpe qui donne `larg`
-    cw = max(cw, W / SUR_ECH)                     # jamais plus agrandi que SUR_ECH
-    cw = min(cw, sw, sh * W / H)                  # ni plus grand que la photo
+    cw = (x1 - x0) * sw / larg
+    cw = min(cw, sw, sh * W / H)
     ch = cw * H / W
-
-    gx = porte_cx - cu * cw                       # bord gauche de la découpe
-    gy = porte_cy - cv * ch
-    gx = min(max(gx, 0), sw - cw)                 # rester dans la photo
-    gy = min(max(gy, 0), sh - ch)
+    gx = min(max((x0 + x1) / 2 * sw - cw / 2, 0), sw - cw)
+    gy = min(max((y0 + y1) / 2 * sh - ch / 2, 0), sh - ch)
     return (gx, gy, gx + cw, gy + ch)
 
 
 def etalonner(im):
-    """Réchauffe légèrement : les photos sont froides, la suite générée est chaude."""
     r, g, b = im.split()
     r = r.point(lambda v: min(255, int(v * 1.02)))
     b = b.point(lambda v: int(v * 0.965))
     im = Image.merge("RGB", (r, g, b))
     return ImageEnhance.Contrast(ImageEnhance.Color(im).enhance(0.92)).enhance(1.04)
-
-
-def cible_jonction(seq):
-    a = np.asarray(Image.open(ICI / "img" / seq / "f_0054.jpg").convert("RGB"), float)
-    return a.reshape(-1, 3).mean(0), a.reshape(-1, 3).std(0)
 
 
 def vers_jonction(im, cible, poids):
@@ -121,32 +85,32 @@ def lisse(t):
     return t * t * (3 - 2 * t)
 
 
-def rendu(temps, i, seq, taille, cache, cible):
-    photo = temps[seq]
-    if photo not in cache:
-        cache[photo] = etalonner(Image.open(PHOTOS / f"{photo}.jpeg").convert("RGB"))
-    src = cache[photo]
-    im = src.resize(taille, Image.LANCZOS, box=cadre_pour(photo, src, taille, *visee(i)))
-    if temps["nom"] == "porte":
-        t = (i - temps["deb"]) / (temps["fin"] - temps["deb"])
-        im = vers_jonction(im, cible, lisse((t - 0.30) / 0.70))
-    return im
-
-
 def construire(seq):
-    taille, dest, cache = FORMATS[seq], ICI / "img" / seq, {}
-    cible = cible_jonction(seq)
+    taille = FORMATS[seq]
+    photo  = VUE[seq]
+    dest   = ICI / "img" / seq
+    src    = etalonner(Image.open(PHOTOS / f"{photo}.jpeg").convert("RGB"))
+
+    a = np.asarray(Image.open(dest / "f_0054.jpg").convert("RGB"), float).reshape(-1, 3)
+    cible = (a.mean(0), a.std(0))
+
+    x0, _, x1, _ = PORTE[photo]
+    larg0 = (x1 - x0) * src.width / min(src.width, src.height * taille[0] / taille[1])
+
     for i in range(1, JONCTION + 1):
-        actifs = [t for t in TEMPS if t["deb"] <= i <= t["fin"]]
-        im = rendu(actifs[0], i, seq, taille, cache, cible)
-        for suivant in actifs[1:]:               # fondu vers le temps suivant
-            t = (i - suivant["deb"]) / (actifs[0]["fin"] - suivant["deb"])
-            im = Image.blend(im, rendu(suivant, i, seq, taille, cache, cible), lisse(t))
+        t = (i - 1) / (JONCTION - 1)
+        larg = larg0 * ZOOM ** t                       # travelling à vitesse constante
+        im = src.resize(taille, Image.LANCZOS, box=cadre(photo, src, taille, larg))
+        im = vers_jonction(im, cible, lisse((t - 0.45) / 0.55))
         im.save(dest / f"f_{i:04d}.jpg", quality=88, optimize=True)
-    print(f"  {seq}  frames 1-{JONCTION}  ({taille[0]}x{taille[1]})")
+
+    m = json.loads((dest / "manifest.json").read_text())
+    m["veilC"], m["veilW"] = VEIL_C, VEIL_W
+    (dest / "manifest.json").write_text(json.dumps(m, separators=(",", ":")))
+    print(f"  {seq}  {photo}  zoom x1 -> x{ZOOM}  ({taille[0]}x{taille[1]})")
 
 
 if __name__ == "__main__":
     for seq in FORMATS:
         construire(seq)
-    print(f"\n  frames {JONCTION+1}-145 inchangées.")
+    print(f"\n  voile noir recentré sur f_0054 : veilC={VEIL_C}, veilW={VEIL_W}")
