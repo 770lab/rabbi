@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NOM}} — {{CATEGORIE}} à {{VILLE}}</title>
+<meta name="description" content="{{META_DESCRIPTION}}">
+<link rel="canonical" href="{{CANONICAL}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{NOM}} — {{CATEGORIE}} à {{VILLE}}">
+<meta property="og:description" content="{{META_DESCRIPTION}}">
+<meta property="og:image" content="{{PHOTO_PRINCIPALE}}">
+<meta name="theme-color" content="#111111">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23{{TEINTE_HEX}}'/><text x='16' y='22' font-size='17' font-family='Georgia,serif' fill='white' text-anchor='middle'>{{INITIALE}}</text></svg>">
+<script type="application/ld+json">{{JSONLD}}</script>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --accent:#{{TEINTE_HEX}};
+    --encre:#14110f; --doux:#6b625b; --fond:#fbf9f7; --carte:#fff; --trait:#e9e2db;
+    --rayon:14px; --large:1080px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--encre:#f4efea;--doux:#a79d95;--fond:#131110;--carte:#1c1917;--trait:#2e2926}
+  }
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--fond);color:var(--encre);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:600;line-height:1.15;margin:0 0 .5em}
+  h1{font-size:clamp(2.1rem,6vw,4rem)}
+  h2{font-size:clamp(1.5rem,3.4vw,2.2rem)}
+  img{max-width:100%;display:block}
+  a{color:inherit}
+  .enveloppe{max-width:var(--large);margin:0 auto;padding:0 22px}
+  section{padding:clamp(48px,7vw,88px) 0}
+
+  /* Bandeau d'honnêteté : cette page est une proposition, pas le site officiel */
+  .bandeau{position:sticky;top:0;z-index:50;background:var(--encre);color:var(--fond);
+    font-size:13px;padding:9px 16px;display:flex;gap:14px;align-items:center;
+    justify-content:center;flex-wrap:wrap;text-align:center}
+  .bandeau a{background:var(--accent);color:#fff;text-decoration:none;padding:5px 13px;
+    border-radius:99px;font-weight:600;white-space:nowrap}
+
+  header.hero{position:relative;min-height:min(78vh,660px);display:flex;align-items:flex-end;
+    background:{{FOND_HERO}};background-size:cover;background-position:center;color:#fff}
+  header.hero::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.72) 100%)}
+  .hero .enveloppe{position:relative;z-index:1;padding-top:80px;padding-bottom:52px;width:100%}
+  .surtitre{text-transform:uppercase;letter-spacing:.16em;font-size:12px;opacity:.9;margin-bottom:14px}
+  .hero p.accroche{font-size:clamp(1rem,2.2vw,1.2rem);max-width:52ch;opacity:.95;margin:0 0 26px}
+  .note{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);
+    backdrop-filter:blur(8px);padding:6px 14px;border-radius:99px;font-size:14px;margin-bottom:18px}
+  .etoiles{color:#ffc94d;letter-spacing:2px}
+
+  .actions{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:99px;
+    text-decoration:none;font-weight:600;font-size:15px;border:1.5px solid transparent;
+    transition:transform .15s ease,opacity .15s ease}
+  .btn:hover{transform:translateY(-2px)}
+  .btn-plein{background:var(--accent);color:#fff}
+  .btn-vide{border-color:rgba(255,255,255,.55);color:#fff}
+
+  .statut{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .pastille{width:9px;height:9px;border-radius:50%;background:#3fbf6a;
+    box-shadow:0 0 0 4px rgba(63,191,106,.22)}
+  .pastille.ferme{background:#d0453f;box-shadow:0 0 0 4px rgba(208,69,63,.22)}
+
+  .grille{display:grid;gap:22px}
+  @media(min-width:760px){.g2{grid-template-columns:1.15fr .85fr}.g3{grid-template-columns:repeat(3,1fr)}}
+  .carte{background:var(--carte);border:1px solid var(--trait);border-radius:var(--rayon);padding:26px}
+  .doux{color:var(--doux)}
+
+  .horaires{list-style:none;margin:0;padding:0}
+  .horaires li{display:flex;justify-content:space-between;gap:16px;padding:9px 0;
+    border-bottom:1px dashed var(--trait);font-size:15px}
+  .horaires li:last-child{border-bottom:0}
+  .horaires li.aujourdhui{font-weight:700;color:var(--accent)}
+
+  .galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+  .galerie figure{margin:0;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--trait)}
+  .galerie img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease}
+  .galerie figure:hover img{transform:scale(1.06)}
+
+  blockquote{margin:0;font-size:15px}
+  blockquote footer{margin-top:12px;font-size:13px;color:var(--doux)}
+
+  .bandeau-final{background:var(--encre);color:var(--fond);border-radius:var(--rayon);
+    padding:clamp(28px,5vw,48px);text-align:center}
+  .bandeau-final h2{color:var(--fond)}
+
+  footer.pied{padding:34px 0 60px;font-size:13px;color:var(--doux);text-align:center}
+  .barre-tel{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;
+    background:var(--accent);color:#fff;text-align:center;padding:15px;font-weight:700;
+    text-decoration:none}
+  @media(max-width:640px){.barre-tel{display:block}body{padding-bottom:56px}}
+</style>
+</head>
+<body>
+
+<div class="bandeau">
+  <span>Maquette de refonte proposée par <strong>{{SOCIETE}}</strong> — page non officielle, sans lien avec l'établissement.</span>
+  <a href="{{LIEN_RDV}}">Choisir un créneau d'échange</a>
+</div>
+
+<header class="hero">
+  <div class="enveloppe">
+    <div class="surtitre">{{CATEGORIE}} · {{VILLE}}</div>
+    <h1>{{NOM}}</h1>
+    {{BLOC_NOTE}}
+    <p class="accroche">{{ACCROCHE}}</p>
+    <div class="actions">
+      <a class="btn btn-plein" href="tel:{{TEL_BRUT}}">Appeler {{TEL}}</a>
+      <a class="btn btn-vide" href="{{MAPS_URL}}" target="_blank" rel="noopener">Itinéraire</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="enveloppe grille g2">
+    <div>
+      <h2>{{TITRE_PRESENTATION}}</h2>
+      <p>{{PRESENTATION}}</p>
+      <p class="doux">{{ADRESSE}}</p>
+    </div>
+    <div class="carte">
+      <div class="statut"><span class="pastille" id="pastille"></span><span id="etat">Horaires</span></div>
+      <ul class="horaires" id="horaires">{{HORAIRES}}</ul>
+    </div>
+  </div>
+</section>
+
+{{SECTION_PHOTOS}}
+{{SECTION_AVIS}}
+
+<section>
+  <div class="enveloppe">
+    <div class="bandeau-final">
+      <h2>{{TITRE_FINAL}}</h2>
+      <p>{{TEXTE_FINAL}}</p>
+      <div class="actions" style="justify-content:center">
+        <a class="btn btn-plein" href="tel:{{TEL_BRUT}}">Appeler {{TEL}}</a>
+        <a class="btn btn-vide" href="{{MAPS_URL}}" target="_blank" rel="noopener">Nous trouver</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="pied">
+  <div class="enveloppe">
+    <p>{{NOM}} · {{ADRESSE}} · {{TEL}}</p>
+    <p>Maquette réalisée le {{DATE}} par {{SOCIETE}} à partir des informations publiques de la fiche Google.
+       Aucun lien contractuel avec {{NOM}}. <a href="{{LIEN_RDV}}">Réserver 15 minutes pour en parler</a>.</p>
+  </div>
+</footer>
+
+<a class="barre-tel" href="tel:{{TEL_BRUT}}">Appeler maintenant</a>
+
+<script>
+// Ouvert / fermé calculé à partir des horaires de la fiche Google.
+(function(){
+  var horaires = {{HORAIRES_JSON}};
+  var jours = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+  var now = new Date(), jour = jours[now.getDay()], minutes = now.getHours()*60+now.getMinutes();
+  var ligne = horaires.find(function(h){ return h.toLowerCase().indexOf(jour) === 0; });
+  var etat = document.getElementById("etat"), pastille = document.getElementById("pastille");
+  if(!ligne){ etat.textContent = "Horaires d'ouverture"; pastille.style.display="none"; return; }
+  document.querySelectorAll("#horaires li").forEach(function(li){
+    if(li.textContent.toLowerCase().indexOf(jour) === 0) li.classList.add("aujourdhui");
+  });
+  var ouvert = false;
+  (ligne.match(/(\d{1,2})[:h](\d{2})\s*[–\-—à]\s*(\d{1,2})[:h](\d{2})/g)||[]).forEach(function(p){
+    var m = p.match(/(\d{1,2})[:h](\d{2})\s*[–\-—à]\s*(\d{1,2})[:h](\d{2})/);
+    var d = +m[1]*60 + +m[2], f = +m[3]*60 + +m[4];
+    if(f < d) f += 1440;
+    if(minutes >= d && minutes <= f) ouvert = true;
+  });
+  etat.textContent = ouvert ? "Ouvert en ce moment" : "Fermé en ce moment";
+  if(!ouvert) pastille.classList.add("ferme");
+})();
+</script>
+</body>
+</html>
