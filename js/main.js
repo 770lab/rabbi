@@ -35,10 +35,10 @@
 
   fetch(DIR + '/manifest.json')
     .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-    .then(function (m) { setup(m.count, m.pad, m.ext, m.veilC, m.veilW); })
+    .then(function (m) { setup(m.count, m.pad, m.ext, m.veilC, m.veilW, m.v); })
     .catch(function () { /* frames absentes : page statique */ });
 
-  function setup(COUNT, PAD, EXT, VEIL_C, VEIL_W) {
+  function setup(COUNT, PAD, EXT, VEIL_C, VEIL_W, VER) {
     var ctx = canvas.getContext('2d');
     var frames = new Array(COUNT);
     var loaded = new Array(COUNT);
@@ -46,7 +46,10 @@
 
     function src(i) {
       var n = String(i + 1); while (n.length < (PAD || 4)) n = '0' + n;
-      return DIR + '/f_' + n + '.' + (EXT || 'jpg');
+      /* jeton de version : les frames gardent le même nom d'une refonte à
+         l'autre et sont servies en max-age 14400. Sans ça, un visiteur qui
+         a déjà vu le site garde les anciennes images pendant 4 h. */
+      return DIR + '/f_' + n + '.' + (EXT || 'jpg') + (VER ? '?v=' + VER : '');
     }
     function load(i, cb) {
       if (frames[i]) return;

@@ -47,6 +47,11 @@ PORTE = {"p09": (.487, .445, .514, .545),
 VEIL_C = round(53 / (COUNT - 1) * 0.88, 4)
 VEIL_W = 0.055
 
+# Les frames gardent les mêmes noms de fichier et sont servies en
+# max-age 14400 : ce jeton, repris par main.js dans l'URL de chaque
+# frame, force les navigateurs à recharger après une refonte.
+VERSION = "3"
+
 
 def cadre(photo, src, taille, larg):
     """Découpe qui pose la porte à `larg` de large, centrée à l'écran."""
@@ -105,9 +110,9 @@ def construire(seq):
         im.save(dest / f"f_{i:04d}.jpg", quality=88, optimize=True)
 
     m = json.loads((dest / "manifest.json").read_text())
-    m["veilC"], m["veilW"] = VEIL_C, VEIL_W
+    m["veilC"], m["veilW"], m["v"] = VEIL_C, VEIL_W, VERSION
     (dest / "manifest.json").write_text(json.dumps(m, separators=(",", ":")))
-    print(f"  {seq}  {photo}  zoom x1 -> x{ZOOM}  ({taille[0]}x{taille[1]})")
+    print(f"  {seq}  {photo}  zoom x1 -> x{ZOOM}  ({taille[0]}x{taille[1]})  v{VERSION}")
 
 
 if __name__ == "__main__":
