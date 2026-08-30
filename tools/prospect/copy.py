@@ -107,6 +107,21 @@ def _bloc_defauts(defauts: list[dict], maxi: int = 3) -> str:
     return "\n\n".join(lignes)
 
 
+def _prix(cfg: dict) -> str:
+    """Le prix ne sort qu'au dernier message : en premier contact il fait fuir,
+    en dernier il trie ceux qui hésitaient encore."""
+    o = cfg.get("offre") or {}
+    if not (o.get("prix") or "").strip():
+        return ""
+    phrase = f"Pour situer, sans que vous ayez à demander : {o['prix']}"
+    if (o.get("delai") or "").strip():
+        phrase += f", livré en {o['delai']}"
+    phrase += "."
+    if (o.get("garantie") or "").strip():
+        phrase += f" {o['garantie']}"
+    return _plier(phrase)
+
+
 def _lien_rdv(cfg: dict, creneaux: list[str] | None) -> str:
     lien = cfg["rdv"].get("lien", "")
     duree = cfg["rdv"].get("duree_min", 20)
@@ -215,11 +230,21 @@ def mail_site_obsolete(etab: dict, audit: dict, cfg: dict,
     constats = _bloc_defauts(defauts, 3)
 
     chiffre = ""
-    if isinstance(score, int):
+    if isinstance(score, int) and score >= 25:
         chiffre = _plier(
-            f"Au total, votre page ressort à {score}/100 sur les critères que Google utilise "
-            f"pour classer les sites locaux. Ce n'est pas une question de goût : c'est ce qui "
-            f"décide si vous apparaissez au-dessus ou en dessous du concurrent d'en face."
+            f"Au total, votre page ressort à {score}/100 sur les critères que Google "
+            f"utilise pour classer les commerces locaux. Ce n'est pas une question de "
+            f"goût : c'est ce qui décide si vous apparaissez au-dessus ou en dessous du "
+            f"concurrent d'en face."
+        )
+    elif isinstance(score, int):
+        # Sous 25, le chiffre humilie au lieu de convaincre : on dit la même chose
+        # sans le brandir.
+        chiffre = _plier(
+            "Aucun de ces points n'est une question de goût : ce sont les critères que "
+            "Google utilise pour classer les commerces locaux, et votre page les manque "
+            "presque tous. C'est aussi une bonne nouvelle — il n'y a que du terrain à "
+            "gagner."
         )
 
     preuve = ""
@@ -281,6 +306,7 @@ def relance(etab: dict, mail_initial: dict, cfg: dict, rang: int = 1,
             ),
             (_plier("Je laisse la maquette en ligne encore trente jours, elle est à vous si "
                     "elle vous sert :") + f"\n\n  {url_maquette}" if url_maquette else ""),
+            _prix(cfg),
             _plier("Et si le moment n'est simplement pas le bon, dites-le moi : je vous "
                    "recontacte dans six mois, pas avant."),
             "Bien à vous,\n" + _signature(cfg),
