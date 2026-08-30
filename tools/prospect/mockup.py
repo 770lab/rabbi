@@ -195,7 +195,8 @@ def generer(etab: dict, cfg: dict, cle_api: str | None = None,
     if etab.get("note"):
         bloc_note = ('<div class="note"><span class="etoiles">{}</span>'
                      '<span>{}/5 · {} avis Google</span></div>').format(
-            _etoiles(etab["note"]), etab["note"], etab.get("nb_avis") or 0)
+            _etoiles(etab["note"]), str(etab["note"]).replace(".", ","),
+            etab.get("nb_avis") or 0)
 
     tel = etab.get("telephone") or ""
     tel_brut = re.sub(r"[^\d+]", "", tel) or ""

@@ -249,19 +249,20 @@ def auditer_site(url: str, seuil_obsolete: int = 60) -> dict:
     if url_finale.startswith("http://"):
         defauts.append(_defaut(
             "pas_https", "Pas de HTTPS", 20, url_finale,
-            "Chrome affiche « Non sécurisé » dans la barre d'adresse de vos visiteurs, "
-            "et Google déclasse les sites en HTTP depuis 2018."))
+            "Depuis 2018, Chrome affiche « Non sécurisé » dans la barre d'adresse de "
+            "vos visiteurs, et Google privilégie les sites sécurisés dans son "
+            "classement."))
     else:
         atouts.append("HTTPS actif")
 
     # --- Mobile ---------------------------------------------------------------
     if not p.viewport:
         defauts.append(_defaut(
-            "pas_responsive", "Site non adapté au mobile (aucune balise viewport)", 22,
-            "<meta name=viewport> absente",
-            "Plus de 7 recherches locales sur 10 se font sur téléphone. Sur mobile, "
-            "votre site s'affiche en version « bureau » miniature : illisible, "
-            "donc quitté en quelques secondes."))
+            "pas_responsive", "Le site n'est pas adapté au téléphone", 22, "",
+            "L'essentiel des recherches locales se fait sur mobile. Sur un téléphone, "
+            "votre site s'affiche en version « bureau » miniature : il faut zoomer pour "
+            "lire, et la plupart des visiteurs referment avant d'avoir trouvé vos "
+            "horaires."))
     elif "@media" not in bas:
         defauts.append(_defaut(
             "responsive_partiel", "Mise en page peu adaptative", 8,
@@ -333,8 +334,9 @@ def auditer_site(url: str, seuil_obsolete: int = 60) -> dict:
     if poids_ko > 2500:
         defauts.append(_defaut(
             "page_tres_lourde", "Page d'accueil très lourde", 12, f"{poids_ko} Ko de HTML",
-            f"{poids_ko} Ko rien que pour le HTML : en 4G dans la rue, la page met "
-            "plusieurs secondes à apparaître. 53 % des visiteurs abandonnent au-delà de 3 s."))
+            f"{poids_ko} Ko rien que pour le texte de la page : en 4G dans la rue, elle "
+            "met plusieurs secondes à apparaître, et la plupart des visiteurs n'attendent "
+            "pas."))
     elif poids_ko > 1200:
         defauts.append(_defaut("page_lourde", "Page d'accueil lourde", 6, f"{poids_ko} Ko", ""))
 
@@ -350,26 +352,27 @@ def auditer_site(url: str, seuil_obsolete: int = 60) -> dict:
         defauts.append(_defaut(
             "images_non_optimisees", "Images non optimisées", 5,
             f"{p.images} images, aucune en chargement différé",
-            "Toutes les photos se chargent d'un coup, même celles que le visiteur "
-            "ne verra jamais."))
+            "Toutes les photos se chargent d'un coup, y compris celles tout en bas de "
+            "page que le visiteur ne verra jamais. D'où l'attente."))
 
     # --- Technologies datées --------------------------------------------------
     obsoletes = []
     if p.balises_obsoletes:
-        obsoletes.append("balises " + ", ".join(f"<{b}>" for b in sorted(p.balises_obsoletes)))
+        obsoletes.append("mise en forme héritée des années 2000")
     if ".swf" in bas or "shockwave" in bas:
-        obsoletes.append("Flash (technologie morte depuis 2020)")
+        obsoletes.append("Flash, technologie morte depuis 2020")
     mj = re.search(r"jquery[.-](\d+)\.(\d+)[\d.]*(?:\.min)?\.js", bas)
     if mj and int(mj.group(1)) < 3:
-        obsoletes.append(f"jQuery {mj.group(1)}.{mj.group(2)}")
+        obsoletes.append(f"jQuery {mj.group(1)}.{mj.group(2)}, une version de 2012")
     if p.tableaux >= 3 and not p.viewport:
-        obsoletes.append("mise en page en tableaux HTML")
+        obsoletes.append("mise en page construite en tableaux")
     if obsoletes:
         defauts.append(_defaut(
-            "techno_obsolete", "Technologies obsolètes", 14, " ; ".join(obsoletes),
-            "Le site repose sur des techniques abandonnées (" + obsoletes[0] + ") : "
-            "risque d'affichage cassé selon les navigateurs, et faille de sécurité "
-            "potentielle."))
+            "techno_obsolete", "Le site est bâti sur des techniques abandonnées", 14,
+            " ; ".join(obsoletes),
+            "Concrètement : l'affichage peut casser selon le navigateur du visiteur, "
+            "et les briques les plus anciennes ne reçoivent plus de correctif de "
+            "sécurité."))
 
     for motif, nom in CONSTRUCTEURS_DATES.items():
         if motif in bas:

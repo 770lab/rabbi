@@ -87,11 +87,13 @@ def _mentions(cfg: dict, email: str = "") -> str:
 
 
 def _phrase_note(etab: dict) -> str:
+    """En français, on écrit 4,6/5 — pas 4.6/5. Le détail se remarque."""
     note, avis = etab.get("note"), etab.get("nb_avis") or 0
+    fr = str(note).replace(".", ",") if note else ""
     if note and avis >= 20:
-        return f"{note}/5 sur {avis} avis Google"
+        return f"{fr}/5 sur {avis} avis Google"
     if note and avis:
-        return f"{note}/5 sur Google"
+        return f"{fr}/5 sur Google"
     return ""
 
 
@@ -110,8 +112,9 @@ def _lien_rdv(cfg: dict, creneaux: list[str] | None) -> str:
     duree = cfg["rdv"].get("duree_min", 20)
     if creneaux:
         liste = "\n".join(f"  · {c}" for c in creneaux[:3])
-        base = (f"Si ça vous parle, je vous montre tout en {duree} minutes au téléphone. "
-                f"Voici mes créneaux libres :\n{liste}\n")
+        base = _plier(
+            f"Si ça vous parle, je vous montre tout en {duree} minutes au téléphone. "
+            f"Voici mes créneaux libres :") + f"\n\n{liste}\n"
         if lien:
             base += f"\nUn autre moment vous arrange mieux ? Tout mon agenda est ici :\n{lien}"
         else:
