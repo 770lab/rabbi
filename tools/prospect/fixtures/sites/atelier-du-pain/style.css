@@ -1,0 +1,9 @@
+/* Feuille externe du faux « bon site » de la démonstration.
+   Elle existe pour que l'audit doive VRAIMENT aller y chercher les media queries :
+   c'est là qu'elles sont sur un site réel, pas dans un <style> en ligne. */
+body { font-family: system-ui, sans-serif; margin: 2rem; }
+footer { color: #666; font-size: .85rem; }
+
+@media (max-width: 700px) {
+  body { font-size: 15px; margin: 1rem; }
+}

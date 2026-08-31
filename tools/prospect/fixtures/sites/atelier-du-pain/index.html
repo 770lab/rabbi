@@ -9,8 +9,11 @@
 <meta property="og:description" content="Boulangerie artisanale à Lyon 3e">
 <meta property="og:image" content="/og.jpg">
 <link rel="icon" href="/favicon.ico">
-<style>@media (max-width: 700px){ body { font-size: 15px } }</style>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Bakery","name":"L'Atelier du Pain"}</script>
+<!-- Les media queries sont dans la feuille externe, comme sur un vrai site : c'est
+     le cas que l'audit doit savoir lire sans crier au « peu adaptatif ». -->
+<link rel="stylesheet" href="style.css">
+<!-- Forme @graph produite par Yoast / Rank Math : la forme dominante en vrai. -->
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"L'Atelier du Pain"},{"@type":["Bakery","LocalBusiness"],"name":"L'Atelier du Pain","telephone":"+33478000000"}]}</script>
 </head>
 <body>
 <h1>L'Atelier du Pain</h1>

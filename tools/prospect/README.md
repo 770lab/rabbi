@@ -13,18 +13,42 @@ Aucune dépendance à installer : bibliothèque standard Python uniquement.
 ## Démarrage en trois minutes (hors ligne, sans clé API)
 
 ```bash
-cp tools/prospect/prospect.config.example.json tools/prospect/prospect.config.json   # puis remplissez-le
 python3 -m tools.prospect chercher --demo
 python3 -m tools.prospect auditer --demo
 python3 -m tools.prospect maquette
-python3 -m tools.prospect rediger --afficher
 python3 -m http.server -d tools/prospect/out/maquettes 8080           # allez voir les maquettes
+python3 -m tools.prospect exporter --format appels                    # la feuille d'appel
 ```
 
-Le mode `--demo` travaille sur huit commerces fictifs et trois faux sites
-(un site de 2011 en tableaux, un Wix daté, une boulangerie bien faite) servis
-localement. C'est le meilleur moyen de comprendre la chaîne avant de dépenser
-un centime d'API.
+Ces cinq commandes ne s'adressent à personne : elles tournent telles quelles,
+sans clé API et sans configuration.
+
+Pour aller jusqu'au mail, il faut d'abord vous déclarer :
+
+```bash
+cp tools/prospect/prospect.config.example.json tools/prospect/prospect.config.json
+$EDITOR tools/prospect/prospect.config.json      # ← à faire vraiment, voir ci-dessous
+python3 -m tools.prospect rediger --afficher
+```
+
+**La copie de l'exemple ne suffit pas** : `rediger` la refuse, exprès. Le fichier
+livré comme le fichier d'exemple sont truffés de trous (`A_REMPLIR`,
+`vous@votredomaine.fr`, `VOTRE-PAGE-DE-RESERVATION`), et un trou n'est pas une
+valeur. Tant qu'il en reste un, `rediger`, `relancer` et les exports qui
+fabriquent des messages (`json`, `eml`) s'arrêtent en listant les champs
+fautifs, sans rien écrire. Ce n'est pas une panne, c'est le verrou : un mail
+signé « A_REMPLIR » vaut une plainte, pas un rendez-vous.
+
+Sont exigés : `identite.nom`, `identite.societe`, `identite.email`,
+`identite.telephone`, `identite.adresse_postale` et `rdv.lien`. Deux champs
+facultatifs — `identite.site` (repris dans la signature) et `offre.prix` (repris
+dans la relance 2) — peuvent rester **vides**, jamais à l'état de gabarit.
+
+Le mode `--demo` travaille sur neuf commerces fictifs et quatre faux sites
+servis localement : un site de 2011 en tableaux, un Wix daté, une boulangerie
+bien faite, et un site que l'audit n'arrive pas à lire (celui-là finit en
+`non_auditable`, et personne ne le démarche). C'est le meilleur moyen de
+comprendre la chaîne avant de dépenser un centime d'API.
 
 ## En vrai
 
@@ -38,20 +62,52 @@ python3 -m tools.prospect maquette --photos
 python3 -m tools.prospect rediger --creneaux tools/prospect/out/creneaux.json
 python3 -m tools.prospect exporter --format json        # → brouillons Gmail
 python3 -m tools.prospect exporter --format appels      # → feuille d'appels
+
+# … vous déposez et vous envoyez à la main, puis :
+python3 -m tools.prospect marquer envoye --tous         # ← sans ça, rien ne bouge
+python3 -m tools.prospect relancer --rang 1             # J+4
+python3 -m tools.prospect relancer --rang 2             # J+9
+python3 -m tools.prospect marquer repondu <place_id>    # il a répondu : on le laisse tranquille
 ```
+
+### `marquer` : le maillon qu'on oublie
+
+Le code n'envoie rien, donc il ne peut pas savoir tout seul qu'un mail est
+parti. C'est `marquer envoye` qui le lui dit, et c'est de là que découle tout le
+reste : le quota journalier se compte sur la date d'envoi, et `relancer` ne
+regarde que les mails passés en `envoye` depuis plus de `delai_relance_1_jours`
+(4) ou `delai_relance_2_jours` (9). Sans ce coup de tampon, la séquence J+4 /
+J+9 n'existe pas : `relancer` répondra éternellement « 0 relance(s)
+préparée(s) », et vous chercherez le bug pendant une heure.
+
+Le geste : vous déposez les brouillons dans Gmail, vous les envoyez, puis
+`marquer envoye --tous`. Et dès qu'un prospect répond, `marquer repondu <place_id>` —
+il sort définitivement de la file de relance.
 
 ---
 
-## Les trois populations
+## Les cinq verdicts
 
-L'audit range chaque établissement dans une case, et une seule.
+L'audit range chaque établissement dans une case, et une seule. Trois cases
+mènent à une sollicitation, deux mènent au silence.
 
 | Verdict | Ce qu'on a trouvé | Ce qu'on envoie |
 |---|---|---|
 | `absent` | Aucun site, ou seulement une page Facebook | **Mail A** — « vos 428 avis ne mènent nulle part » |
-| `obsolete` | Un site, sous le seuil de l'audit | **Mail B** — les trois défauts mesurés, chiffrés |
-| `injoignable` | Le site de la fiche ne répond plus | **Mail B**, angle « vos clients tombent sur une erreur » |
+| `obsolete` | Un site, sous le seuil de l'audit | **Mail B** — les défauts mesurés, chiffrés |
+| `injoignable` | Le lien de la fiche renvoie une erreur nette (404, 410, domaine mort) | **Mail I** — l'erreur constatée et sa date, rien sur une page qu'on n'a pas vue |
 | `correct` | Site au-dessus du seuil | **Rien.** On ne démarche pas quelqu'un qui n'a pas de problème. |
+| `non_auditable` | Le site existe peut-être, mais l'audit n'a rien pu lire (403, 429, 5xx, délai dépassé, erreur TLS, anti-bot) | **Rien non plus.** On ne sait rien de vérifiable : pas de mail, pas de maquette, pas d'appel. |
+
+La différence entre `injoignable` et `non_auditable` est toute la prudence de
+l'outil : dans le premier cas on a une erreur qu'on peut montrer au commerçant
+et qu'il constatera lui-même ; dans le second on a un mur, qui vient peut-être
+de notre côté. Un mur ne se reproche à personne.
+
+Ces deux verdicts silencieux valent pour **tous** les canaux : le mail, la
+maquette et la feuille d'appel les écartent chacun de leur côté. Un
+`exporter --format appels` qui compte moins de lignes que la base, c'est normal
+— il vous dit combien il a mis de côté et pourquoi.
 
 Les restaurants passent d'abord (`--priorite prioritaires`), les autres métiers
 ensuite (`--priorite secondaires`). C'est réglable dans la configuration.
@@ -99,7 +155,31 @@ sombre. Elle se génère en une seconde et pèse quelques kilo-octets.
 Elle porte **toujours** un bandeau en haut : *« Maquette de refonte proposée
 par X — page non officielle »*, avec le bouton de prise de rendez-vous.
 Ce bandeau ne s'enlève pas. C'est ce qui sépare une démarche commerciale
-honnête d'une usurpation d'identité.
+honnête d'une usurpation d'identité. Les données structurées de la page
+décrivent la maquette, jamais l'établissement : pas question qu'un moteur
+indexe notre démo comme le site officiel du commerce.
+
+### Les photos ne sont pas à nous
+
+Sans `--photos`, la maquette n'affiche aucune image, et le mail ne dit pas un
+mot de « vos photos ». C'est le réglage par défaut, et le plus sûr.
+
+Avec `--photos`, on télécharge les images de la fiche Google et on les
+réhéberge. Deux choses à savoir avant de le faire :
+
+- **Ça coûte.** Chaque photo est un appel facturé à la Places API, en plus de
+  la recherche. Sur une grosse zone, ça se voit.
+- **Elles appartiennent à quelqu'un.** Ce sont pour l'essentiel des clichés
+  déposés par des clients. La licence de la Places API impose d'afficher
+  l'auteur **partout où l'image est montrée** : la normalisation conserve donc
+  les attributions à côté du nom du fichier, `places.credit_photo()` fabrique
+  la ligne de crédit (« Photo : Prénom Nom via Google »), et cette ligne doit
+  apparaître sous chaque photo de la maquette. Une image reprise sans son
+  auteur, c'est la seule chose de cette chaîne qui puisse valoir un courrier
+  d'avocat — pas le mail.
+
+Si vous ne voulez pas gérer ça, restez sans `--photos` : la maquette tient
+très bien debout sur les horaires, la note et le bouton d'appel.
 
 ## Les agents
 
@@ -127,7 +207,13 @@ Pour les créneaux d'appel, deux approches :
 - **Envoyer.** Il produit des brouillons. C'est vous qui appuyez sur envoyer.
 - **Écrire une phrase non mesurée.** Chaque reproche fait à un site vient d'un
   défaut relevé par l'audit, avec sa preuve entre parenthèses.
-- **Démarcher un site correct.**
+- **Démarcher un site correct.** Ni par mail, ni par la feuille d'appel : le
+  verdict `correct` sort de tous les canaux.
+- **Écrire à qui on n'a pas pu lire.** Verdict `non_auditable` : pas de mail,
+  pas de maquette, pas d'appel. Un blocage n'est pas un défaut.
+- **Signer un mail avec un champ resté à `A_REMPLIR`.** Le verrou couvre aussi
+  les deux champs facultatifs recopiés dans le corps : le site en signature, le
+  prix en relance 2.
 - **Ramasser des adresses nominatives.** Seules les adresses génériques
   publiées par l'entreprise (`contact@`, `info@`, `reservation@`) sont
   retenues ; les autres sont marquées et passent en dernier.
@@ -258,12 +344,16 @@ Ce qui n'est pas encore fait, par ordre de rendement décroissant.
 | `auditer` | Audite les sites et les fiches (`--demo`, `--refaire`, `--limite`) |
 | `enrichir` | Cherche les adresses de contact publiques |
 | `maquette` | Génère les pages de refonte (`--photos`) |
-| `rediger` | Rédige les brouillons (`--creneaux`, `--afficher`) |
-| `relancer` | Prépare les relances J+4 / J+9 (`--rang`) |
-| `exporter` | `csv` · `json` (Gmail) · `eml` · `appels` |
+| `rediger` | Rédige les brouillons (`--creneaux`, `--afficher`) — **exige la configuration d'expédition** |
+| `marquer` | `marquer envoye --tous` après le dépôt dans Gmail, `marquer repondu <place_id>` quand ça répond. **Sans elle, `relancer` ne trouve jamais rien.** |
+| `relancer` | Prépare les relances J+4 / J+9 (`--rang`) — **exige la configuration d'expédition** |
+| `exporter` | `csv` (dump) · `appels` (feuille d'appel) — sans configuration ; `json` (Gmail) · `eml` — **exigent la configuration d'expédition**, ce sont eux qui portent votre identité |
 | `liste` | La base, triée par priorité |
 | `stop` | Exclut définitivement une adresse ou un domaine |
-| `pipeline` | Tout d'un coup |
+| `pipeline` | Tout d'un coup (`chercher` → `auditer` → `enrichir` → `maquette` → `rediger`) |
+
+`chercher`, `auditer`, `maquette`, `liste`, `stop` et `exporter --format csv|appels`
+n'écrivent à personne : ils tournent sans que vous vous soyez déclaré.
 
 Tout vit dans `tools/prospect/out/prospection.sqlite3` — les maquettes dans `tools/prospect/out/maquettes/`,
 les exports dans `tools/prospect/out/exports/`. Rien de tout ça n'est versionné.

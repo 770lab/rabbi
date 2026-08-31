@@ -9,12 +9,24 @@ mieux s'en abstenir.
 from __future__ import annotations
 
 import re
+import sys
+import time
+import urllib.error
 import urllib.parse
+import urllib.request
 import urllib.robotparser
 
 from .audit import UA, _telecharger
 
 MOTIF_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+
+# `can_fetch` ne retient de l'UA que ce qui précède le premier « / » : lui passer UA
+# entier lui ferait croire que notre robot s'appelle « Mozilla », et une règle visant
+# AuditSiteBot ne s'appliquerait jamais. On lui donne donc le jeton, pas la chaîne.
+_JETON = re.search(r"[A-Za-z][A-Za-z0-9.\-]*[Bb]ot[A-Za-z0-9.\-]*", UA)
+JETON_ROBOTS = (_JETON.group(0) if _JETON else "AuditSiteBot").split("/")[0]
+
+PAUSE_S = 0.5  # entre deux pages d'un même domaine : on ne tire pas en rafale
 
 PREFIXES_GENERIQUES = {
     "contact", "info", "infos", "bonjour", "hello", "reservation", "reservations",
@@ -31,15 +43,48 @@ A_IGNORER = ("@sentry", "@example", "@wix", "@2x.png", ".png", ".jpg", ".jpeg",
              ".gif", ".webp", "@domain", "@email", "@votredomaine", "@sitename")
 
 
-def _robots_autorise(base: str, chemin: str) -> bool:
-    rp = urllib.robotparser.RobotFileParser()
-    rp.set_url(base + "/robots.txt")
+_ROBOTS: dict[str, urllib.robotparser.RobotFileParser | None] = {}
+
+
+def _robots(base: str) -> urllib.robotparser.RobotFileParser | None:
+    """Télécharge le robots.txt d'un domaine UNE seule fois et le mémorise.
+
+    Il était auparavant retéléchargé pour chaque chemin candidat, en rafale (relevé :
+    10 requêtes en 0,02 s) — le motif de trafic qui fait blacklister une IP — et avec
+    l'ouvreur par défaut d'urllib, donc l'UA « Python-urllib/3.x » que filtrent les WAF,
+    alors que les pages, elles, passent avec l'UA du projet.
+
+    Renvoie None quand il n'y a aucune règle exploitable : fichier absent, illisible,
+    ou protégé (401/403). `RobotFileParser.read()` traduisait ces deux derniers cas en
+    « tout interdit » sans rien lever — l'outil renonçait alors silencieusement à
+    toutes les pages de contact et rendait un brouillon sans destinataire.
+    """
+    if base in _ROBOTS:
+        return _ROBOTS[base]
+    rp = None
+    req = urllib.request.Request(base + "/robots.txt", headers={"User-Agent": UA})
     try:
-        rp.read()
+        with urllib.request.urlopen(req, timeout=8) as r:
+            texte = r.read(500_000).decode("utf-8", "replace")
+        rp = urllib.robotparser.RobotFileParser()
+        rp.parse(texte.splitlines())
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            print(f"  ! robots.txt inaccessible ({e.code}) sur {base} : aucune règle "
+                  "exploitable, on s'en tient aux pages publiques habituelles",
+                  file=sys.stderr)
     except Exception:
-        return True  # pas de robots.txt lisible : comportement par défaut, on continue
+        pass  # domaine injoignable, TLS, timeout : le téléchargement des pages tranchera
+    _ROBOTS[base] = rp
+    return rp
+
+
+def _robots_autorise(base: str, chemin: str) -> bool:
+    rp = _robots(base)
+    if rp is None:
+        return True  # pas de robots.txt exploitable : comportement par défaut, on continue
     try:
-        return rp.can_fetch(UA, base + chemin)
+        return rp.can_fetch(JETON_ROBOTS, base + chemin)
     except Exception:
         return True
 
@@ -74,8 +119,13 @@ def trouver_emails(url: str, max_pages: int = 4) -> list[dict]:
     for chemin in PAGES_CANDIDATES:
         if visitees >= max_pages:
             break
-        if chemin and not _robots_autorise(base, chemin):
+        # `chemin or "/"` : la racine est la seule page toujours visitée, c'était
+        # aussi la seule qu'on ne soumettait pas au contrôle — l'exact inverse de
+        # l'intention, puisque `chemin` vide court-circuitait le test.
+        if not _robots_autorise(base, chemin or "/"):
             continue
+        if visitees:
+            time.sleep(PAUSE_S)
         try:
             html, _, _, _, _ = _telecharger(base + chemin, timeout=12)
         except Exception:
