@@ -3,6 +3,4 @@ __pycache__/
 *.py[cod]
 
 # Prospection : données de campagne et configuration personnelle, jamais versionnées.
-tools/prospect/out/
-tools/prospect/prospect.config.json
 node_modules/
