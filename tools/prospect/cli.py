@@ -21,6 +21,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from . import audit as audit_mod
+from . import pousser as pousser_mod
 from . import suivi as suivi_mod
 from . import config as config_mod
 from . import copy as copy_mod
@@ -979,6 +980,20 @@ def cmd_marquer(args, cfg):
         print("Ces prospects ne seront plus relancés.")
 
 
+def cmd_pousser(args, cfg):
+    """Envoie la copie locale vers le tableau de bord en ligne."""
+    if not args.sans_tirer:
+        # Sans ça, une poussée écraserait les statuts marqués depuis le navigateur
+        # par une copie locale plus ancienne.
+        pousser_mod.tirer(args.db)
+    pousser_mod.pousser(args.db)
+
+
+def cmd_tirer(args, cfg):
+    """Redescend les statuts marqués en ligne."""
+    pousser_mod.tirer(args.db)
+
+
 def cmd_suivi(args, cfg):
     """Tableau de bord local : voir où en est chaque prospect, et le marquer."""
     suivi_mod.servir(args.db, cfg, port=args.port,
@@ -1064,6 +1079,14 @@ def principal(argv=None):
     x.add_argument("--avec-email", dest="avec_email", action="store_true",
                    help="n'exporter que les prospects dont on a l'adresse e-mail")
     x.set_defaults(fn=cmd_exporter)
+
+    ps = sp.add_parser("pousser", help="publier la base vers le tableau de bord en ligne")
+    ps.add_argument("--sans-tirer", dest="sans_tirer", action="store_true",
+                    help="ne pas récupérer d'abord les statuts marqués en ligne")
+    ps.set_defaults(fn=cmd_pousser)
+
+    tr = sp.add_parser("tirer", help="récupérer les statuts marqués en ligne")
+    tr.set_defaults(fn=cmd_tirer)
 
     sv = sp.add_parser("suivi", help="tableau de bord local (envois, relances, appels)")
     sv.add_argument("--port", type=int, default=8770)

@@ -89,6 +89,31 @@ ce dernier isole les prospects sans adresse e-mail, qui sont presque tous des
 Un « STOP » retire **toutes** les adresses connues du prospect, pas seulement celle
 qui a servi : sinon il resterait joignable par les autres.
 
+### Le tableau de bord en ligne
+
+`suivi` tourne sur votre machine. Pour marquer depuis le téléphone ou depuis un
+autre poste, il y a la même page sur **770lab.com/votresite**, servie par un
+Worker Cloudflare adossé à une base D1.
+
+```bash
+python3 -m tools.prospect pousser     # publie la base locale (récupère d'abord les statuts en ligne)
+python3 -m tools.prospect tirer       # récupère seulement les statuts marqués en ligne
+```
+
+**Pourquoi pas une page sur GitHub Pages** : le dépôt est public et Pages est
+statique. Un mot de passe en JavaScript n'y protège rien — le fichier de données
+s'ouvre directement, sans passer par lui. Et le tableau de bord écrit (envoyé,
+STOP), ce qu'une page statique ne sait pas faire. Le Worker vérifie
+l'authentification avant que la moindre ligne ne sorte ; les identifiants sont des
+secrets Wrangler, absents du code comme du dépôt.
+
+**La machine reste la source de vérité.** `chercher`, `auditer` et `rediger`
+travaillent en local ; le tableau de bord en ligne n'a qu'une copie, réduite à ce
+qu'il affiche — ni corps de mail, ni détail d'audit. Seuls les statuts et les
+exclusions changent là-haut, et c'est tout ce que `tirer` redescend. `pousser`
+appelle `tirer` d'abord : sans ça, une copie locale plus ancienne écraserait ce
+qui vient d'être marqué depuis le navigateur.
+
 ### `marquer` : le maillon qu'on oublie
 
 Le code n'envoie rien, donc il ne peut pas savoir tout seul qu'un mail est
