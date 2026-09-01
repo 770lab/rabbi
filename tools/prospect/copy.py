@@ -96,7 +96,7 @@ def verifier_expedition(cfg: dict) -> None:
 # --- Objets, en variantes A/B/C ------------------------------------------------
 OBJETS_A = [
     "{nom} : vos {avis} avis Google ne mènent nulle part",
-    "Je me suis permis de faire une page pour {nom}",
+    "Je me suis permis de faire un site pour {nom}",
     "{nom}, {ville} — il vous manque une adresse à donner",
 ]
 OBJETS_B = [
@@ -295,17 +295,21 @@ def _prix(cfg: dict) -> str:
     return _plier(phrase)
 
 
-def _lien_rdv(cfg: dict, creneaux: list[str] | None, avec_maquette: bool = True) -> str:
-    """Sans maquette en ligne, on ne propose pas d'en « faire le tour » au téléphone."""
+def _lien_rdv(cfg: dict, creneaux: list[str] | None, avec_maquette: bool = True,
+              tour: str | None = None) -> str:
+    """Sans maquette en ligne, on ne propose pas d'en « faire le tour » au téléphone.
+
+    `tour` permet au gabarit A de dire « je vous montre le site » : c'est le seul
+    endroit où il peut le voir, puisque le mail ne porte plus le lien.
+    """
     lien = cfg["rdv"].get("lien", "")
-    duree = cfg["rdv"].get("duree_min", 20)
-    tour = "je vous fais le tour de la maquette au téléphone" if avec_maquette else \
-           "je vous montre ce que ça donnerait"
+    tour = tour or ("je vous fais le tour de la maquette au téléphone" if avec_maquette else
+                    "je vous montre ce que ça donnerait")
     if creneaux:
         liste = "\n".join(f"  · {c}" for c in creneaux[:3])
         base = _plier(
-            f"Si ça vous parle, je vous montre tout en {duree} minutes au téléphone. "
-            f"Voici mes créneaux libres :") + f"\n\n{liste}\n"
+            "Si ça vous parle, je vous montre tout au téléphone. "
+            "Voici mes créneaux libres :") + f"\n\n{liste}\n"
         if lien:
             base += f"\nUn autre moment vous arrange mieux ? Tout mon agenda est ici :\n{lien}"
         else:
@@ -313,10 +317,10 @@ def _lien_rdv(cfg: dict, creneaux: list[str] | None, avec_maquette: bool = True)
         return base
     if lien:
         return _plier(
-            f"Si ça vous parle, prenez {duree} minutes dans mon agenda, au moment qui "
+            f"Si ça vous parle, prenez un créneau dans mon agenda, au moment qui "
             f"vous arrange — {tour} :") + f"\n{lien}"
-    return _plier(f"Si ça vous parle, répondez-moi avec deux ou trois moments qui vous "
-                  f"arrangent cette semaine, je vous appelle {duree} minutes.")
+    return _plier("Si ça vous parle, répondez-moi avec deux ou trois moments qui vous "
+                  "arrangent cette semaine, et je vous appelle.")
 
 
 def _phrase_score(score, defauts: list[dict]) -> str:
@@ -422,102 +426,132 @@ def _date_audit(audit: dict, cfg: dict | None = None) -> str:
 
 
 # --- Type A : aucun site --------------------------------------------------------
+def _clients_qui_recommandent(avis: int) -> str:
+    """« plusieurs centaines » ne s'écrit qu'au-dessus de plusieurs centaines.
+
+    Le commerçant connaît son nombre d'avis par cœur : un ordre de grandeur faux
+    dans la première phrase suffit à faire jeter le message.
+    """
+    if avis >= 200:
+        return "plusieurs centaines de clients"
+    if avis >= 100:
+        return "plus de cent clients"
+    if avis >= 20:
+        return f"{avis} clients"
+    return "des clients"
+
+
+def _requetes(metier: str, ville: str, restaurant: bool) -> str:
+    """Les recherches où il n'apparaît pas — construites sur son métier et sa ville,
+    jamais sur un quartier qu'on n'a pas relevé."""
+    lignes = [f"« {metier} {ville} »",
+              f"« meilleur {metier} {ville} »",
+              # « bonne adresse » ne se dit pas d'un plombier : hors restauration,
+              # la requête qui compte est celle de la proximité.
+              f"« bonne adresse {ville} »" if restaurant else f"« {metier} près de chez moi »"]
+    bloc = "\n".join(f"  {x}" for x in lignes)
+    if restaurant:
+        bloc += "\n\n" + _plier("ou même le type de cuisine qu'elle a envie de manger ce soir.")
+    return bloc
+
+
+def _rdv_decouverte(cfg: dict, creneaux: list[str] | None) -> str:
+    """Clôture du gabarit A : le rendez-vous est la seule façon de voir le site."""
+    lien = cfg["rdv"].get("lien", "")
+    if creneaux:
+        liste = "\n".join(f"  · {c}" for c in creneaux[:3])
+        base = _plier("Si vous voulez le découvrir, voici mes créneaux :") + f"\n\n{liste}\n"
+        base += (f"\nUn autre moment vous arrange mieux ? Tout mon agenda est ici :\n{lien}"
+                 if lien else "\nDites-moi simplement lequel vous convient.")
+        return base
+    if lien:
+        return _plier("Si vous voulez le découvrir, choisissez simplement le créneau qui vous "
+                      "convient ici :") + f"\n{lien}"
+    return _plier("Si vous voulez le découvrir, répondez-moi avec deux ou trois moments "
+                  "qui vous arrangent cette semaine, et je vous appelle.")
+
+
 def mail_sans_site(etab: dict, manques_fiche: list[dict], cfg: dict,
                    url_maquette: str = "", creneaux: list[str] | None = None, *,
                    maquette_photos: bool = False,
                    contact_generique: bool | None = None) -> dict:
     """Fiche Google sans site (ou renvoyant vers un réseau social).
 
-    Tout ce qui est reproché à la fiche vient de `manques_fiche` — les défauts que
-    l'audit a réellement relevés. On n'invente pas un manque pour faire du volume :
-    le destinataire ouvre sa fiche pendant qu'il lit le mail.
+    Le mail annonce un site déjà fait et ne donne pas son adresse : le rendez-vous
+    est la seule façon de le voir. L'annonce ne dépend pas de `url_maquette` — le
+    site se fabrique entre la prise de rendez-vous et le rendez-vous lui-même.
     """
     verifier_expedition(cfg)
     nom = etab.get("nom", "")
     ville = etab.get("ville") or "votre quartier"
     avis = etab.get("nb_avis") or 0
     metier = (etab.get("categorie") or "").lower() or "votre métier"
-    tel = (etab.get("telephone") or "").strip()
+    restaurant = "restaurant" in (str(etab.get("categorie", "")) + str(etab.get("types", ""))).lower()
     objet_tpl, variante = _variante(OBJETS_A, etab["place_id"])
     objet = objet_tpl.format(nom=nom, avis=avis, ville=ville)
 
-    manques_fiche = manques_fiche or []
-    codes = {d.get("code") for d in manques_fiche}
+    codes = {d.get("code") for d in (manques_fiche or [])}
     reseaux = "reseaux_seulement" in codes
 
-    accroche = (
-        f"Bonjour,\n\n"
-        + _plier(
-            f"Je cherchais une adresse à {ville} cette semaine et je suis tombé sur la fiche "
-            f"Google {de(nom)}"
-            + _accroche_note(etab, "c'est le genre de fiche qui donne envie de pousser la porte")
-            + ("En cliquant sur « Site Web », on arrive sur une page de réseau social, "
-               "pas sur un vrai site à vous."
-               if reseaux else
-               "Puis j'ai cliqué sur « Site Web », et il ne s'est rien passé : le bouton "
-               "de votre fiche est vide.")
-        )
-    )
+    blocs = ["Bonjour,",
+             _plier(f"Je suis tombé cette semaine sur la fiche Google {de(nom)}.")]
 
-    # Les manques de la fiche ne sont cités que s'ils ont été mesurés. Écrire
-    # « pas de photos » à quelqu'un dont la fiche en affiche douze suffit à faire
-    # jeter le message — et c'est vérifiable en un clic.
-    manques_dits = []
-    photos = next((d for d in manques_fiche if d.get("code") == "fiche_peu_de_photos"), None)
-    if photos:
-        nb = (photos.get("preuve") or "").strip()
-        manques_dits.append("elle n'a aucune photo" if nb.startswith("0")
-                            else (f"elle n'a que {nb}" if nb else "elle a très peu de photos"))
-    if "fiche_sans_horaires" in codes:
-        manques_dits.append("elle n'affiche pas vos horaires")
-    if "fiche_sans_tel" in codes:
-        manques_dits.append("elle ne donne aucun numéro à appeler")
+    # La note ne sort jamais sous 4,0 (`_phrase_note`), et le commentaire qui la
+    # salue demande une note qui le mérite : sinon on félicite quelqu'un pour un
+    # chiffre que l'audit vient de lui compter en moins.
+    note = _phrase_note(etab)
+    if note:
+        bloc = note.replace(" avis Google", " avis") + "."
+        if _note_flatteuse(etab):
+            bloc += "\nÀ ce niveau-là, votre réputation fait déjà une bonne partie du travail."
+        blocs.append(bloc)
 
-    phrases = [
-        f"Concrètement : ceux qui vous connaissent vous trouvent par votre nom, la carte "
-        f"Google fait ce travail. Mais en dehors d'elle, quand quelqu'un cherche "
-        f"« {metier} {ville} », il n'y a aucune page à vous à afficher — vous n'existez "
-        f"que dans cette fiche."
-    ]
-    if manques_dits:
-        phrases.append(
-            "Et c'est elle, et rien d'autre, que regarde celui qui hésite entre vous et le "
-            "voisin : " + _enumerer(manques_dits) + ".")
-    if avis:
-        phrases.append(
-            f"Enfin, tout ce que vous avez construit — ces {avis} avis — repose sur une page "
-            f"que Google peut modifier, suspendre ou monétiser sans vous demander votre avis.")
-    consequence = _plier(" ".join(phrases))
-
-    preuve = ""
-    if url_maquette:
-        # « vos photos » ne s'écrit que si la maquette en contient vraiment.
-        repris = ("vos photos, vos horaires, votre note" if maquette_photos
-                  else "vos horaires, votre note, votre adresse")
-        preuve = _plier(
-            f"Plutôt que de vous l'expliquer, je me suis permis de la faire. J'ai repris vos "
-            f"informations publiques — {repris} — et j'en ai fait une page. Elle est en ligne, "
-            f"elle marche sur téléphone"
-            + (", on peut vous appeler d'un doigt :" if tel else " :")
-        ) + f"\n\n  {url_maquette}\n\n" + _plier(
-            "Regardez-la comme un brouillon : tout est modifiable, et elle vous appartient si "
-            "vous la voulez."
-            if maquette_photos else
-            "Regardez-la comme un brouillon : vos photos n'y sont pas encore — je n'allais pas "
-            "me servir dans celles de votre fiche sans vous demander — et tout le reste est "
-            "modifiable. Elle vous appartient si vous la voulez."
-        )
+    if reseaux:
+        blocs.append(_plier("Par curiosité, j'ai cliqué sur « Site Web » : on arrive sur une "
+                            "page de réseau social, pas sur un site à vous."))
     else:
-        preuve = _plier(
-            "Je peux vous montrer en quelques minutes à quoi ressemblerait une page à votre nom, "
-            "avec vos vrais horaires et vos photos si vous me les confiez."
-        )
+        blocs += ["Par curiosité, j'ai cliqué sur « Site Web ».", "Rien."]
 
-    corps = "\n\n".join(
-        x for x in (accroche, consequence, preuve, _lien_rdv(cfg, creneaux, bool(url_maquette)),
-                    "Bien à vous,\n" + _signature(cfg),
-                    "—\n" + _mentions(cfg, contact_generique)) if x)
-    return {"type": "A_sans_site", "objet": objet, "corps": corps, "variante": variante}
+    blocs.append(_plier(
+        f"Et je me suis dit que c'était dommage : vous avez "
+        f"{_clients_qui_recommandent(avis)} qui recommandent votre établissement, mais aucun "
+        f"site pour transformer cette réputation en visibilité supplémentaire."))
+    blocs.append(_plier(
+        "Parce qu'un bon site ne sert pas seulement aux gens qui vous connaissent déjà."))
+    blocs.append(_plier(
+        "Bien référencé, il peut vous faire apparaître lorsqu'une personne cherche "
+        "simplement :"))
+    blocs.append(_requetes(metier, ville, restaurant))
+    blocs.append(_plier(
+        "Ce sont potentiellement de nouveaux clients qui vous découvrent chaque jour sans "
+        "avoir jamais entendu parler de vous auparavant."))
+
+    # Décision commerciale assumée : le site est annoncé fait, que la maquette soit
+    # déjà générée ou non. Le clic sur l'agenda déclenche la production, et le délai
+    # avant le rendez-vous suffit à la fabriquer — c'est une précommande, pas un
+    # constat d'audit. Ne pas « réparer » ce bloc en le reconditionnant sur
+    # `url_maquette` : la contrepartie est opérationnelle, pas rédactionnelle — tout
+    # rendez-vous pris doit trouver un site prêt le jour dit.
+    blocs += [
+        _plier("Alors plutôt que de vous envoyer un mail pour vous expliquer ce qu'il "
+               "faudrait faire…"),
+        "je l'ai fait.",
+        _plier(f"J'ai préparé une première version du site {de(nom)}."),
+        _plier("Il fonctionne sur mobile, reprend les informations essentielles de votre "
+               "établissement et a été pensé pour donner envie de venir chez vous dès les "
+               "premières secondes."),
+        _plier("Je pourrais simplement vous envoyer le lien, mais je préfère vous le "
+               "montrer directement : vous verrez immédiatement ce que j'ai imaginé pour "
+               "votre établissement et vous pourrez me dire ce que vous en pensez."),
+        "Le site existe déjà. Vous n'avez rien à imaginer.",
+    ]
+
+    blocs.append(_rdv_decouverte(cfg, creneaux))
+    blocs.append("À bientôt,\n" + _signature(cfg))
+    blocs.append("—\n" + _mentions(cfg, contact_generique))
+
+    return {"type": "A_sans_site", "objet": objet,
+            "corps": "\n\n".join(x for x in blocs if x), "variante": variante}
 
 
 # --- Type B : site obsolète -----------------------------------------------------

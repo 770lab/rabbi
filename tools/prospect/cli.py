@@ -904,8 +904,11 @@ def cmd_marquer(args, cfg):
 
 
 def cmd_pipeline(args, cfg):
+    # `maquette` ne fait plus partie de l'enchaînement : le mail annonce un site
+    # fabriqué APRÈS la prise de rendez-vous, il n'a donc pas de page à montrer.
+    # La commande reste disponible seule (`python3 -m tools.prospect maquette`).
     for etape, fn in (("chercher", cmd_chercher), ("auditer", cmd_auditer),
-                      ("enrichir", cmd_enrichir), ("maquette", cmd_maquette),
+                      ("enrichir", cmd_enrichir),
                       ("rediger", cmd_rediger)):
         print(f"\n{'=' * 78}\n== {etape}\n{'=' * 78}")
         fn(args, cfg)
@@ -997,7 +1000,7 @@ def principal(argv=None):
     s.add_argument("--motif", default="demande de désinscription")
     s.set_defaults(fn=cmd_stop)
 
-    pl = sp.add_parser("pipeline", help="chercher + auditer + enrichir + maquette + rediger")
+    pl = sp.add_parser("pipeline", help="chercher + auditer + enrichir + rediger")
     pl.add_argument("--zone")
     pl.add_argument("--categorie", action="append")
     pl.add_argument("--priorite", choices=["prioritaires", "secondaires", "toutes"],
