@@ -736,6 +736,15 @@ def cmd_exporter(args, cfg):
         print(f"({exclus} ligne(s) retirée(s) : adresse ou domaine sur la liste STOP)")
     if args.verdict:
         donnees = [d for d in donnees if d.get("verdict") == args.verdict]
+    # Un brouillon sans destinataire n'est pas envoyable : `enrichir` n'a rien trouvé,
+    # ou l'établissement n'a pas de site où chercher. C'est le cas de presque tous les
+    # `absent` — pour eux le canal n'est pas le mail, c'est le téléphone.
+    if getattr(args, "avec_email", False):
+        avant_mail = len(donnees)
+        donnees = [d for d in donnees if (d.get("destinataire") or "").strip()]
+        if avant_mail - len(donnees):
+            print(f"({avant_mail - len(donnees)} sans adresse e-mail, écarté(s) — "
+                  f"voir `exporter --format appels`)")
     if args.limite:
         donnees = donnees[: args.limite]
     # Trois des quatre formats servent à solliciter quelqu'un : `non_auditable`
@@ -1045,6 +1054,8 @@ def principal(argv=None):
     x.add_argument("--verdict", choices=["absent", "obsolete", "correct",
                                         "injoignable", "non_auditable"])
     x.add_argument("--limite", type=int)
+    x.add_argument("--avec-email", dest="avec_email", action="store_true",
+                   help="n'exporter que les prospects dont on a l'adresse e-mail")
     x.set_defaults(fn=cmd_exporter)
 
     l = sp.add_parser("liste", help="afficher la base, triée par priorité")
