@@ -63,12 +63,31 @@ python3 -m tools.prospect rediger --creneaux tools/prospect/out/creneaux.json
 python3 -m tools.prospect exporter --format json        # → brouillons Gmail
 python3 -m tools.prospect exporter --format appels      # → feuille d'appels
 
-# … vous déposez et vous envoyez à la main, puis :
-python3 -m tools.prospect marquer envoye --tous         # ← sans ça, rien ne bouge
+python3 -m tools.prospect exporter --format mail --avec-email   # → brouillons dans Mail.app
+
+# … vous relisez et vous envoyez à la main, puis :
+python3 -m tools.prospect suivi                         # ← le tableau de bord
+python3 -m tools.prospect marquer envoye --tous         # (ou en un clic dans le suivi)
 python3 -m tools.prospect relancer --rang 1             # J+4
 python3 -m tools.prospect relancer --rang 2             # J+9
 python3 -m tools.prospect marquer repondu <place_id>    # il a répondu : on le laisse tranquille
 ```
+
+### `suivi` : le tableau de bord
+
+`python3 -m tools.prospect suivi` ouvre une page locale (127.0.0.1 uniquement, les
+coordonnées ne sortent pas de la machine) qui montre, pour chaque prospect : son
+verdict, son canal — e-mail ou téléphone —, son statut, le nombre de jours depuis
+l'envoi, et si une relance est due. Trois boutons par ligne : **Envoyé**,
+**A répondu**, **STOP**. Ils écrivent dans la même base et suivent les mêmes règles
+que la commande `marquer`.
+
+Les filtres qui servent vraiment : **À envoyer**, **Relance due** et **À appeler** —
+ce dernier isole les prospects sans adresse e-mail, qui sont presque tous des
+`absent`, c'est-à-dire les meilleurs.
+
+Un « STOP » retire **toutes** les adresses connues du prospect, pas seulement celle
+qui a servi : sinon il resterait joignable par les autres.
 
 ### `marquer` : le maillon qu'on oublie
 

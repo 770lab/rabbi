@@ -21,6 +21,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from . import audit as audit_mod
+from . import suivi as suivi_mod
 from . import config as config_mod
 from . import copy as copy_mod
 from . import enrich as enrich_mod
@@ -978,6 +979,12 @@ def cmd_marquer(args, cfg):
         print("Ces prospects ne seront plus relancés.")
 
 
+def cmd_suivi(args, cfg):
+    """Tableau de bord local : voir où en est chaque prospect, et le marquer."""
+    suivi_mod.servir(args.db, cfg, port=args.port,
+                     ouvrir_navigateur=not args.sans_navigateur)
+
+
 def cmd_pipeline(args, cfg):
     # `maquette` ne fait plus partie de l'enchaînement : le mail annonce un site
     # fabriqué APRÈS la prise de rendez-vous, il n'a donc pas de page à montrer.
@@ -1057,6 +1064,12 @@ def principal(argv=None):
     x.add_argument("--avec-email", dest="avec_email", action="store_true",
                    help="n'exporter que les prospects dont on a l'adresse e-mail")
     x.set_defaults(fn=cmd_exporter)
+
+    sv = sp.add_parser("suivi", help="tableau de bord local (envois, relances, appels)")
+    sv.add_argument("--port", type=int, default=8770)
+    sv.add_argument("--sans-navigateur", dest="sans_navigateur", action="store_true",
+                    help="ne pas ouvrir le navigateur automatiquement")
+    sv.set_defaults(fn=cmd_suivi)
 
     l = sp.add_parser("liste", help="afficher la base, triée par priorité")
     l.add_argument("--verdict", choices=["absent", "obsolete", "correct",
