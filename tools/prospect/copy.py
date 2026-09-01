@@ -36,8 +36,6 @@ CHAMPS_EXPEDITION = (
     ("identite", "nom"),
     ("identite", "societe"),
     ("identite", "email"),
-    ("identite", "telephone"),
-    ("identite", "adresse_postale"),
     ("rdv", "lien"),
 )
 
@@ -47,6 +45,8 @@ CHAMPS_EXPEDITION = (
 # « je n'en parle pas » ; « A_REMPLIR » veut dire « j'ai oublié », et ça se refuse.
 CHAMPS_SANS_GABARIT = (
     ("identite", "site"),
+    ("identite", "telephone"),
+    ("identite", "adresse_postale"),
     ("offre", "prix"),
 )
 
@@ -201,8 +201,14 @@ def _mentions(cfg: dict, contact_generique: bool | None = None) -> str:
         origine = ("Ce message professionnel est adressé à l'adresse de contact que "
                    "j'ai relevée sur vos pages publiques, au titre de la prospection "
                    "entre professionnels.")
+    # L'identification de l'expéditeur et le droit d'opposition ne sont pas
+    # négociables ; l'adresse postale, elle, ne s'écrit que si elle est renseignée.
+    # À défaut, l'adresse e-mail d'expédition tient lieu de coordonnée de contact.
+    postale = str(i.get("adresse_postale") or "").strip()
+    identite = f"{i['societe']} ({i['nom']}), " + (f"{postale}. " if postale
+                                                   else f"{i['email']}. ")
     return _plier(
-        f"{origine} {i['societe']} ({i['nom']}), {i['adresse_postale']}. "
+        f"{origine} {identite}"
         f"Répondez « STOP » et je supprime définitivement votre adresse de mes "
         f"fichiers, sans autre message."
     )

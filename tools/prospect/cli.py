@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import subprocess
 import sys
 import time
 import urllib.error
@@ -656,7 +657,7 @@ def cmd_relancer(args, cfg):
 # téléphonique : ni l'un ni l'autre n'envoie quoi que ce soit, et bloquer celui
 # qui veut juste sa liste d'appels derrière une page de réservation n'a pas de
 # sens.
-FORMATS_EXPEDITION = ("json", "eml")
+FORMATS_EXPEDITION = ("json", "eml", "mail")
 
 # Une accroche par verdict démarchable, et rien d'autre. La clé sert deux fois :
 # elle fournit la phrase, et elle définit à elle seule qui figure sur la feuille
@@ -667,6 +668,42 @@ ACCROCHES_APPEL = {
     "injoignable": "le lien de votre fiche ne répond plus.",
     "obsolete": "votre site avait pris un coup de vieux.",
 }
+
+
+# AppleScript de dépôt : il enregistre un brouillon et s'arrête là. Pas de `send`
+# dans ce fichier — l'envoi reste un geste humain, comme le reste de la chaîne.
+_APPLESCRIPT_BROUILLON = """
+on run argv
+  set leSujet to item 1 of argv
+  set leCorps to item 2 of argv
+  set lExpediteur to item 3 of argv
+  set leDestinataire to item 4 of argv
+  tell application "Mail"
+    set m to make new outgoing message with properties {subject:leSujet, content:leCorps, visible:false}
+    tell m
+      set sender to lExpediteur
+      if leDestinataire is not "" then
+        make new to recipient at end of to recipients with properties {address:leDestinataire}
+      end if
+    end tell
+    save m
+  end tell
+  return "ok"
+end run
+"""
+
+
+def _deposer_dans_mail(objet: str, corps: str, expediteur: str, destinataire: str) -> str:
+    """Dépose un brouillon dans Mail.app (macOS). Rend '' si tout va bien, sinon l'erreur."""
+    try:
+        r = subprocess.run(["osascript", "-", objet, corps, expediteur, destinataire or ""],
+                           input=_APPLESCRIPT_BROUILLON, capture_output=True, text=True,
+                           timeout=30)
+    except FileNotFoundError:
+        return "osascript introuvable : le format « mail » ne marche que sur macOS."
+    except subprocess.TimeoutExpired:
+        return "Mail n'a pas répondu en 30 s."
+    return "" if r.returncode == 0 else (r.stderr or "").strip()
 
 
 def cmd_exporter(args, cfg):
@@ -810,6 +847,35 @@ def cmd_exporter(args, cfg):
             n += 1
         print(f"→ {dossier.relative_to(BASE.parents[1])}/ ({len(ecrits)} fichiers .eml "
               f"écrits sur {n} brouillon(s), glissables dans Gmail)")
+
+    elif args.format == "mail":
+        expediteur = cfg["identite"].get("email", "")
+        deposes, sans_dest, echecs = 0, 0, []
+        for d in sollicitables:
+            if not d.get("objet"):
+                continue
+            erreur = _deposer_dans_mail(d["objet"], d["corps"], expediteur,
+                                        d.get("destinataire") or "")
+            if erreur:
+                echecs.append((d["nom"], erreur))
+                # Mail refuse en général pour la même raison à chaque fois (compte
+                # absent, permission d'automatisation) : inutile d'insister 40 fois.
+                if len(echecs) >= 3:
+                    break
+                continue
+            deposes += 1
+            if not d.get("destinataire"):
+                sans_dest += 1
+        print(f"→ {deposes} brouillon(s) déposé(s) dans Mail, expéditeur {expediteur}")
+        if sans_dest:
+            print(f"  · {sans_dest} sans destinataire : `enrichir` n'a pas trouvé "
+                  f"d'adresse, à compléter à la main avant d'envoyer.")
+        for nom, err in echecs:
+            print(f"  ⚠️ {nom} : {err.splitlines()[0] if err else 'échec'}")
+        if echecs:
+            print("  Vérifiez que Mail est ouvert, que le compte "
+                  f"« {expediteur} » y est configuré, et que Terminal est autorisé à "
+                  "piloter Mail (Réglages → Confidentialité → Automatisation).")
 
 
 # --------------------------------------------------------------------------- divers
@@ -972,7 +1038,10 @@ def principal(argv=None):
     rl.set_defaults(fn=cmd_relancer)
 
     x = sp.add_parser("exporter", help="exporter la base")
-    x.add_argument("--format", choices=["csv", "json", "eml", "appels"], default="csv")
+    x.add_argument("--format", choices=["csv", "json", "eml", "mail", "appels"],
+                   default="csv",
+                   help="« mail » dépose les brouillons dans Mail.app (macOS) ; "
+                        "il n'envoie rien")
     x.add_argument("--verdict", choices=["absent", "obsolete", "correct",
                                         "injoignable", "non_auditable"])
     x.add_argument("--limite", type=int)
