@@ -683,7 +683,7 @@ def mail_site_injoignable(etab: dict, audit: dict, cfg: dict,
         repris = ("vos photos, vos horaires, votre note" if maquette_photos
                   else "vos horaires, votre note, votre adresse")
         preuve = _plier(
-            f"En attendant, j'ai fait une page d'exemple à partir des seules informations "
+            f"En attendant, j'ai fait un site d'exemple à partir des seules informations "
             f"de votre fiche — {repris}. Ce n'est pas votre site refait : je ne l'ai jamais "
             f"vu. C'est ce à quoi peut ressembler une adresse à votre nom, tout de suite :"
         ) + f"\n\n  {url_maquette}\n\n" + _plier(
@@ -694,7 +694,7 @@ def mail_site_injoignable(etab: dict, audit: dict, cfg: dict,
         preuve = _plier(
             "Si c'est déjà réglé de votre côté, dites-le moi en une ligne : je corrige ma "
             "note et je ne vous relance pas. Sinon, je peux vous montrer à quoi "
-            "ressemblerait une page à votre nom, en ligne cette semaine."
+            "ressemblerait un site à votre nom, en ligne cette semaine."
         )
 
     corps = "\n\n".join(
